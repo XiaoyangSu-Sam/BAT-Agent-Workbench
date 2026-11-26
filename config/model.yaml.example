@@ -1,0 +1,22 @@
+# Optional manual configuration. Fill endpoint and model locally, or use the connection page.
+# endpoint accepts the FULL /v1/chat/completions URL or a /v1 base URL.
+# Copy to model.yaml. Do not put credentials in this file.
+provider: openai_compatible
+endpoint: ""
+endpoint_mode: auto  # auto | exact; exact preserves a complete custom request path
+model: ""
+api_key: ""
+# For a service with NO authentication: api_key: ""
+# An omitted key or a blank/null YAML value also means no authentication.
+temperature: 0.2
+timeout: 180
+connect_timeout: 10
+max_retries: 2
+max_tokens: 4096
+tool_mode: native  # native | json (explicit fallback) | disabled (chat only)
+# Preserve same-turn reasoning for native tools. Omit to use the model default.
+# preserve_tool_reasoning: false
+trust_env: true   # honor proxy and certificate environment settings
+
+# Optional verified capacity (tokens), used by the context ring.
+# context_window: 32768
