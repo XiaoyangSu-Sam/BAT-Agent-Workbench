@@ -14,3 +14,5 @@ configuration, conversations and workspace data out of commits and logs.
 ```
 
 Enter the endpoint, model ID and any API key directly in the workbench. **Test connection** checks a text reply. **Test model and tools** checks whether a saved model can call a tool and use its result. To update from v0.7.4, use the [v0.7.5 changed-file list and update prompt](docs/updates/v0.7.5.md).
+
+To add JupyterHub execution to a customized v0.7.5 checkout, use the [v0.7.6 incremental update prompt](docs/updates/v0.7.6.md).

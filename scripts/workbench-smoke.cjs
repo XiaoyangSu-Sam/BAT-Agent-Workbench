@@ -15,7 +15,7 @@ const assert=require("node:assert/strict");
  assert.equal(await page.locator("#endpoint").getAttribute("placeholder"),"Enter your endpoint");
  assert.equal(await page.locator("#modelName").getAttribute("placeholder"),"Enter model name");
  assert.equal(await page.locator(".connect-brand h1").textContent(), "BAT Agent");
- assert.ok((await page.locator(".release-version").textContent()).includes("0.7.5"));
+ assert.ok((await page.locator(".release-version").textContent()).includes("0.7.6"));
  assert.match(await page.locator("#webSearchStatus").textContent(),/SearXNG is configured/);
  await page.screenshot({path:path.join(qa,"connection.png"),fullPage:true});
  await page.click("#previewWorkspace");await page.locator("#workbench").waitFor({state:"visible"});

@@ -30,6 +30,7 @@ function addMessage(role,content,reasoning,elapsedMs){
 }
 function scrollChat(){$("messages").scrollTop=$("messages").scrollHeight;}
 function setBusy(value){
+ if (busy !== value) hub.runChanged(value);
  busy=value;if(!value&&modelTimer){modelTimer.node.textContent="Model request ended · timing unavailable";stopModelTimer();}for(const id of ["send","model","newSession","sessions","settingsButton","newFile","openFolder","folderActivity","emptyOpenFolder","refreshSkills","diagnose"])$(id).disabled=value;
  for(const button of document.querySelectorAll(".session-item"))button.disabled=value;
  $("policy").disabled = value || savingApprovalMode;
@@ -110,10 +111,14 @@ async function changeApprovalMode() {
 async function listSessions(){sessionRecords=await api("/sessions");renderSessions();return sessionRecords;}
 function resetRun(){$("activityCount").textContent="";stopModelTimer();events=[];after=0;runId=null;toolCards.clear();requestedTools.clear();changedPaths.clear();$("changeCount").textContent="0";$("events").replaceChildren();$("changes").replaceChildren();$("output").textContent="Process output will appear here.";$("approval").classList.add("hidden");$("runStatus").textContent="Ready";contextUsage={};renderContext();communication("idle","Ready · No request in progress");}
 function clearMessages(){for(const node of [...$("messages").children])if(node.id!=="welcome")node.remove();$("welcome").classList.remove("hidden");}
-async function loadSession(id){if(busy&&id!==sessionId){error("Stop the current task before switching conversations.");return;}$("workArea").classList.remove("history-open");generation++;sessionId=id;localStorage.setItem("bat.session",id||"");clearMessages();resetRun();setBusy(false);error("");
+async function loadSession(id){if(busy&&id!==sessionId){error("Stop the current task before switching conversations.");return;}$("workArea").classList.remove("history-open");const mine=++generation;sessionId=id;localStorage.setItem("bat.session",id||"");clearMessages();resetRun();setBusy(false);error("");
+ hub.sessionChanged();
  draftApprovalMode=null;
- renderSessions();if(!id){await listSessions();return;}const s=await api("/sessions/"+id);for(const m of s.messages)if(["user","assistant"].includes(m.role))addMessage(m.role,m.content,m._reasoning,m._model_elapsed_ms);await listSessions();
- if(s.runs.length){runId=s.runs[0].id;await poll(++generation,true);}}
+ renderSessions();if(!id){await listSessions();return;}const s=await api("/sessions/"+id);
+ if(mine!==generation)return;
+ for(const m of s.messages)if(["user","assistant"].includes(m.role))addMessage(m.role,m.content,m._reasoning,m._model_elapsed_ms);
+ await listSessions();
+ if(mine===generation&&s.runs.length){runId=s.runs[0].id;await poll(++generation,true);}}
 function searchSources(results) {
  const list = el("ol", undefined, "search-sources");
  for (const hit of results) {
@@ -159,14 +164,18 @@ function renderEvent(event,initial,modelId){
  if(event.type==="model_retry")communication("retrying","Retrying connection…");
  if(event.type==="tool_requested"){requestedTools.set(d.call_id,d);const card=el("details",undefined,"tool-card");card.append(el("summary",(toolLabels[d.name]||d.name)+(d.arguments.path?" · "+d.arguments.path:"")),el("pre",JSON.stringify(d.arguments,null,2)));toolCards.set(d.call_id,card);$("messages").append(card);$("thinkingText").textContent=toolLabels[d.name]||d.name;scrollChat();}
  if(event.type==="tool_result"){
- const card=toolCards.get(d.call_id);if(card){card.classList.add(d.ok?"done":"failed");card.querySelector("summary").textContent=(d.ok?"✓ ":"× ")+card.querySelector("summary").textContent;
+ const card=toolCards.get(d.call_id);if(card){const passed=d.ok&&!(d.name.startsWith("run_jupyter_")&&d.result?.ok===false);card.classList.add(passed?"done":"failed");card.querySelector("summary").textContent=(passed?"✓ ":"× ")+card.querySelector("summary").textContent;
  if(d.ok && d.name==="web_search" && Array.isArray(d.result?.results)) card.append(searchSources(d.result.results));
  else card.append(el("pre",JSON.stringify(d.ok?d.result:d.error,null,2)));}
- const result=d.result||{};if("stdout" in result||"stderr" in result){if($("output").textContent==="Process output will appear here.")$("output").textContent="";$("output").textContent+="> "+d.name+"\n"+(result.stdout||"")+(result.stderr?"\n[stderr]\n"+result.stderr:"")+"\nExit code: "+result.exit_code+(result.timed_out?" · Timed out":"")+"\n\n";$("output").scrollTop=$("output").scrollHeight;}
+ const result=d.result||{};if("stdout" in result||"stderr" in result){
+ const report=d.name.startsWith("run_jupyter_")&&Array.isArray(result.outputs) ? hub.cellOutput(result)
+ : (result.stdout||"")+(result.stderr?"\n[stderr]\n"+result.stderr:"")+"\nExit code: "+result.exit_code+(result.timed_out?" · Timed out":"");
+ if($("output").textContent==="Process output will appear here.")$("output").textContent="";
+ $("output").textContent+="> "+d.name+"\n"+report+"\n\n";$("output").scrollTop=$("output").scrollHeight;}
  if(result.scope==="skill"){loadSkills().catch(e=>error(e.message));}
  if(result.diff!==undefined){const displayPath=result.scope==="skill"?"skills/"+result.skill_id+"/"+result.path:result.path;changedPaths.add(displayPath);$("changeCount").textContent=changedPaths.size;const change=el("details",undefined,"change");change.open=true;const summary=el("summary",displayPath);summary.onclick=()=>{if(result.scope==="skill")showSkill(result.skill_id);else openFile(result.path).catch(e=>error(e.message));};change.append(summary,el("pre",result.diff||"No text changes"));$("changes").append(change);if(result.scope!=="skill")syncChangedFile(result.path).catch(e=>error(e.message));}
  }
- if(event.type==="approval_required"){$("allowAll").classList.toggle("hidden",!(d.can_allow_all ?? (d.kind==="execute")));communication("approval","Waiting for your approval");approvalId=d.approval_id;$("approvalText").textContent=d.name+"\n"+JSON.stringify(d.arguments,null,2);$("approval").classList.remove("hidden");}
+ if(event.type==="approval_required"){$("allowAll").classList.toggle("hidden",!(d.can_allow_all ?? (d.kind==="execute")));communication("approval","Waiting for your approval");approvalId=d.approval_id;$("approvalText").textContent=hub.approvalTarget(d)+d.name+"\n"+JSON.stringify(d.arguments,null,2);$("approval").classList.remove("hidden");}
  if(event.type==="approval_policy_changed")listSessions().catch(e=>error(e.message));
  if(event.type==="approval_resolved")$("approval").classList.add("hidden");
 }

@@ -13,6 +13,12 @@ async def run_turn(run_id, session_id, messages, config, tools, skills, executio
     for step in range(execution.max_steps):
         wire = [{"role":"system","content":system_prompt(skills, config.tool_mode)},
                 *wire_messages(messages, config.tool_mode, continue_tool_reasoning=config.continues_tool_reasoning())]
+        if tools.hub_status["target"] == "jupyterhub":
+            state = "connected" if tools.hub_status["connected"] else "disconnected; ask the user to reconnect for execution"
+            wire[0]["content"] += (
+                f"\nThis chat's execution target is JupyterHub ({state}). BAT reads and edits files locally. "
+                "Execute code only through the advertised JupyterHub tools. Dependencies and data must already exist "
+                "on the remote server. Ask the user to transfer files manually in JupyterLab when needed.")
         if config.tool_mode == "json":
             wire[0]["content"] += "\nTools:\n" + json.dumps(schemas)
         chars = len(json.dumps(wire)) + len(json.dumps(schemas))
@@ -92,4 +98,6 @@ async def run_turn(run_id, session_id, messages, config, tools, skills, executio
             if not output["ok"] and output["error"]["code"] == "approval_denied":
                 # A denial stops the run so the model cannot route around it using a different tool.
                 raise HarnessError("approval_denied", "Operation declined; run stopped.", "approval")
+            if not output["ok"] and output["error"]["code"] in {"hub_execution_unknown", "hub_output_not_saved"}:
+                raise HarnessError(output["error"]["code"], output["error"]["message"], "jupyterhub")
     raise HarnessError("step_limit", "Maximum model steps reached. Review results before continuing.", "runtime")

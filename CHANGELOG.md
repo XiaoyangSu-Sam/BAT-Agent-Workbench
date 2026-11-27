@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.6 — JupyterHub execution
+
+- Select a personal JupyterHub Python kernel and working directory per conversation. Run cells, local script source or individual local notebook cells on that kernel.
+- Review the execution target at approval time. Notebook outputs return to the local notebook, and generated files stay in the remote working directory.
+- For customized installations, use the [incremental update instructions](docs/updates/v0.7.6.md).
+
 ## 0.7.5 — source packaging
 
 - Release archives use the reviewed manifest. Maintainers can add a staged file explicitly when refreshing it.

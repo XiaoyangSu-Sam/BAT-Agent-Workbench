@@ -4,16 +4,17 @@ from .files import FileTools
 from .processes import ProcessTools
 from .web_search import MAX_QUERY_CHARS, configured_search_provider, web_search
 from ..errors import HarnessError
+from ..hub_tools import HubTools
 
 S = {"type": "string"}
 def string(maximum=10000, minimum=0):
     return dict(type="string", minLength=minimum, maxLength=maximum)
 
 class ToolRegistry:
-    def __init__(self, settings, skills):
+    def __init__(self, settings, skills, *, hubs=None, session_id=None):
         self.entries = {}
         self.files = FileTools(settings.workspace, settings.state_dir)
-        self.processes = ProcessTools(settings.workspace, settings.execution, skills)
+        self.hub_status = hubs.status(session_id) if hubs is not None else {"target": "local"}
         def add(name, desc, properties, required, fn, kind="read"):
             schema = dict(type="object", properties=properties, required=required, additionalProperties=False)
             self.entries[name] = dict(description=desc, schema=schema, fn=fn, kind=kind)
@@ -43,6 +44,19 @@ class ToolRegistry:
             {"skill_id":string(80,1), "path":path, "content":string(1000000), "expected_sha256":sha},
             ["skill_id","path","content"], skills.write_skill_file, "write")
         args = {"type":"array","items":string(10000),"maxItems":100}
+        if self.hub_status["target"] != "local":
+            if self.hub_status["connected"]:
+                remote = HubTools(hubs, session_id, self.files)
+                source = {"path": path, "expected_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}}
+                add("run_jupyter_cell", "Execute this code on the conversation's persistent JupyterHub kernel. Files opened by code are on the remote server.",
+                    {"code": string(100000, 1)}, ["code"], remote.run_jupyter_cell, "execute")
+                add("run_jupyter_script", "Send one local Python script's source to a child of the selected Python kernel. Paths and imported modules resolve on the remote server; transfer dependencies manually in JupyterLab.",
+                    {**source, "args": args}, list(source), remote.run_jupyter_script, "execute")
+                add("run_jupyter_notebook_cell", "Execute one local notebook code cell on the selected JupyterHub kernel and save outputs to the same local notebook. Cell index starts at zero and counts every cell.",
+                    {**source, "cell_index": {"type": "integer", "minimum": 0}},
+                    [*source, "cell_index"], remote.run_jupyter_notebook_cell, "execute")
+            return
+        self.processes = ProcessTools(settings.workspace, settings.execution, skills)
         add("run_python_script", "Execute Python in the workspace, optionally from an installed skill's scripts/.",
             {"path":path,"args":args,"skill_id":string(200)}, ["path"],
             self.processes.run_python_script, "execute")

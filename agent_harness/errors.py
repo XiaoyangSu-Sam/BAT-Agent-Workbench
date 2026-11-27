@@ -16,3 +16,13 @@ def redact(value, secrets=()):
         if secret:
             text = text.replace(secret, "[REDACTED]")
     return re.sub(r"(?i)(bearer\s+)[^\s\"']+", r"\1[REDACTED]", text)
+
+
+def clean(value, secrets):
+    if isinstance(value, str):
+        return redact(value, secrets)
+    if isinstance(value, dict):
+        return {k: clean(v, secrets) for k, v in value.items()}
+    if isinstance(value, list):
+        return [clean(v, secrets) for v in value]
+    return value

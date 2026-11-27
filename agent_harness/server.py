@@ -14,6 +14,7 @@ from .errors import HarnessError
 from .store import Store
 from .runtime.skills import SkillRegistry
 from .runtime.manager import RunManager
+from .hub_routes import register_hub_routes
 from .model_settings import ModelInput, save_model, connection_config
 from .diagnostics import diagnose, diagnose_vision
 from .model_discovery import discover_models
@@ -65,6 +66,7 @@ def create_app(root=None, model_factory=None):
     app = FastAPI(title="BAT Agent", version=__version__, lifespan=lifespan)
     app.state.manager, app.state.store, app.state.settings = manager, store, settings
     app.state.token = token
+    register_hub_routes(app, manager)
 
     def require_idle():
         if manager.busy():
@@ -108,7 +110,7 @@ def create_app(root=None, model_factory=None):
 
     @app.get("/static/{name}")
     async def asset(name: str):
-        if name not in ("app.js","ui.js","style.css","chat-layout.css","layout.js","editor.bundle.js","connection.js","workspace.js","markdown.bundle.js"):
+        if name not in ("app.js","ui.js","style.css","chat-layout.css","layout.js","editor.bundle.js","connection.js","workspace.js","hub.js","markdown.bundle.js"):
             return JSONResponse({}, status_code=404)
         return FileResponse(static / name)
 
@@ -180,8 +182,17 @@ def create_app(root=None, model_factory=None):
 
     @app.post("/api/workspace/open")
     async def open_folder(value: WorkspaceInput):
-        require_idle()
-        return open_workspace(settings, value.path)
+        with manager.hubs.change(manager):
+            previous = settings.workspace
+            result = open_workspace(settings, value.path)
+            if settings.workspace != previous:
+                store.reset_workspace_grants(settings.execution.approval_mode)
+                try:
+                    await manager.hubs.close_all()
+                except HarnessError as error:
+                    # The new workspace is already committed and all old clients have been detached.
+                    result["hub_cleanup_warning"] = error.message
+            return result
 
     @app.post("/api/models")
     async def model(value: ModelInput):

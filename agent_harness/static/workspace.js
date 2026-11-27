@@ -51,7 +51,9 @@ function updateContext(){const host=$("contextChips");host.replaceChildren();if(
 function openTextDialog(title,hint,value,action){dialogAction=action;$("textDialogTitle").textContent=title;$("textDialogHint").textContent=hint;$("textDialogInput").value=value;$("textDialogError").classList.add("hidden");$("textDialog").showModal();$("textDialogInput").focus();}
 function chooseFolder(){if(busy)return;openTextDialog("Open workspace","Enter the full path of an existing folder on this computer. The agent and editor will use this folder.",config.workspace,async value=>{
  if(hasDirty())throw new Error("Save or close all unsaved files first.");
- config=await api("/workspace/open",{path:value});documents.clear();activate(null);showConfig();await loadSession(null);await refreshFiles();
+ config=await api("/workspace/open",{path:value});const cleanupWarning=config.hub_cleanup_warning;
+ documents.clear();activate(null);showConfig();await loadSession(null);await refreshFiles();
+ if(cleanupWarning)error(cleanupWarning);
  });}
 function createFile(){if(busy)return;openTextDialog("New file","Enter a path relative to the workspace, such as src/main.py.","",async value=>{
  if(filePaths.includes(value)||documents.has(value))throw new Error("This file already exists. Open it from the explorer.");

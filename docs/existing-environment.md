@@ -1,6 +1,6 @@
 # Update an existing BAT Agent installation
 
-The [v0.7.5 update guide](updates/v0.7.5.md) lists the files that changed since v0.7.4. The source and the Python environment can be updated separately.
+For a customized installation, use the [v0.7.6 feature patch and merge instructions](updates/v0.7.6.md). The source and the Python environment can be updated separately. The procedure below covers full source updates.
 
 ## Before the update
 

@@ -126,6 +126,22 @@
 .saved-model-row button { white-space: nowrap; }
 .connect-form > label[for="savedConnection"] { margin-bottom: 6px; }
 .connect-actions { flex-wrap: wrap; }
+.hub-heading-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.conversation-heading:has(.hub-heading-actions) > :first-child { min-width: 0; }
+#hubTarget[data-state="reconnect"], #hubTarget[data-state="unknown"] { color: #f1c981; }
+#hubDialog { width: 440px; max-height: 90dvh; overflow: auto; }
+#hubDialog .dialog-head h3 { margin: 0; }
+#hubDialog p { line-height: 1.6; overflow-wrap: anywhere; }
+#hubDialog label { display: grid; gap: 5px; margin-top: 12px; }
+#hubDialog [hidden] { display: none; }
+#hubDialog fieldset { margin: 0; padding: 0; border: 0; min-width: 0; }
+#hubDialog .hub-actions { display: flex; align-items: center; gap: 8px; justify-content: flex-end; flex-wrap: wrap; margin-top: 16px; }
+#hubLocal { margin-right: auto; }
+#hubMessage { margin-bottom: 0; color: #c6bdde; }
+#hubMessage:empty { display: none; }
+#hubMessage[role="alert"] { color: #ffb4b8; }
 @media(max-width: 760px) {
  .context-basis:not(.hidden) { margin-right: -3px; }
+ .conversation-heading:has(.hub-heading-actions) { gap: 8px; }
+ .hub-heading-actions .secondary { font-size: 11px; padding: 7px; }
 }

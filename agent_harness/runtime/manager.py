@@ -4,25 +4,18 @@ from .context import repair_incomplete
 from .model import ModelClient
 from .turn import run_turn
 from .tools import ToolRegistry
-from ..errors import HarnessError, redact
-
-def clean(value, secrets):
-    if isinstance(value, str):
-        return redact(value, secrets)
-    if isinstance(value, dict):
-        return {k:clean(v, secrets) for k,v in value.items()}
-    if isinstance(value, list):
-        return [clean(v, secrets) for v in value]
-    return value
+from ..errors import HarnessError, clean
+from ..hub_routes import HubSessions
 
 class RunManager:
     def __init__(self, settings, store, skills, model_factory=ModelClient):
         self.settings, self.store, self.skills = settings, store, skills
         self.model_factory = model_factory
+        self.hubs = HubSessions(settings, store)
         self.tasks, self.approvals = {}, {}
 
     def busy(self):
-        return any(not t.done() for t in self.tasks.values())
+        return self.hubs.changing or any(not t.done() for t in self.tasks.values())
 
     def start(self, session_id, prompt, model_id=None):
         if self.busy():
@@ -57,9 +50,13 @@ class RunManager:
             kind = tools.entries[name]["kind"]
             self.approvals[key] = (approval_id, future, kind, session_id)
             self.store.status(key, "awaiting_approval")
+            target = {}
+            if name.startswith("run_jupyter_"):
+                target = {"execution_target": "JupyterHub", "kernel": tools.hub_status["kernel"],
+                          "folder": tools.hub_status["folder"]}
             await emit("approval_required", {"approval_id": approval_id, "call_id": call_id,
                                              "name": name, "arguments": args, "kind": kind,
-                                             "can_allow_all": kind == "execute" and not always_ask})
+                                             "can_allow_all": kind == "execute" and not always_ask, **target})
             try:
                 accepted = await asyncio.wait_for(future, 600)
                 self.store.status(key, "running")
@@ -73,7 +70,7 @@ class RunManager:
             self.settings.workspace.mkdir(parents=True, exist_ok=True)
             await emit("run_started", {"provider":config.provider,"model":config.model,
                        "tool_mode":config.tool_mode,"workspace":str(self.settings.workspace)})
-            tools = ToolRegistry(self.settings, self.skills)
+            tools = ToolRegistry(self.settings, self.skills, hubs=self.hubs, session_id=session_id)
             await run_turn(key, session_id, messages, config, tools, self.skills,
                            execution, self.store, emit, approve, self.model_factory,
                            execution_allowed=lambda: not always_ask and self.store.execution_allowed(session_id))
@@ -118,3 +115,4 @@ class RunManager:
     async def close(self):
         for key in list(self.tasks):
             await self.cancel(key)
+        await self.hubs.close_all()

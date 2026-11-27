@@ -27,7 +27,7 @@ def check():
         except (importlib.metadata.PackageNotFoundError, ValueError):
             packages[name] = "missing or unrecognized"
             issues.append(name + " must be installed in this interpreter.")
-    for name in ("index.html", "app.js", "editor.bundle.js", "markdown.bundle.js"):
+    for name in ("index.html", "app.js", "hub.js", "editor.bundle.js", "markdown.bundle.js"):
         if not (ROOT / "agent_harness/static" / name).is_file():
             issues.append("Missing bundled UI asset: " + name)
     config_status = "not checked"
@@ -58,7 +58,7 @@ def check():
             "python_version": sys.version.split()[0], "required_packages": packages,
             "configuration": config_status, "skill_folders": len(registered),
             "optional": {name: importlib.util.find_spec(name) is not None
-                         for name in ("nbclient", "nbformat", "ipykernel", "playwright")},
+                         for name in ("nbclient", "nbformat", "ipykernel", "playwright", "tornado")},
             "issues": issues, "warnings": warnings,
             "network_tested": False}
 

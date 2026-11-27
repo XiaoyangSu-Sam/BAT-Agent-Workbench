@@ -26,6 +26,9 @@ class Store:
                 db.execute("ALTER TABLE sessions ADD COLUMN allow_all_execution INTEGER NOT NULL DEFAULT 0")
             if "approval_mode" not in columns:
                 db.execute("ALTER TABLE sessions ADD COLUMN approval_mode TEXT")
+            if "execution_target" not in columns:
+                db.execute("ALTER TABLE sessions ADD COLUMN execution_target TEXT NOT NULL DEFAULT 'local'")
+            db.execute("UPDATE sessions SET allow_all_execution=0 WHERE execution_target='jupyterhub'")
             db.execute("UPDATE runs SET status='interrupted' WHERE status IN ('running','awaiting_approval','cancelling')")
 
     def connect(self):
@@ -57,6 +60,20 @@ class Store:
             changed = db.execute("UPDATE sessions SET allow_all_execution=? WHERE id=?", (int(allow_all), key))
             if changed.rowcount != 1:
                 raise KeyError(key)
+
+    def set_execution_target(self, key, target, default_mode):
+        with self.connect() as db:
+            changed = db.execute("""UPDATE sessions SET execution_target=?, allow_all_execution=0,
+                approval_mode=CASE WHEN COALESCE(approval_mode, ?)='trusted' THEN 'execution' ELSE approval_mode END
+                WHERE id=?""", (target, default_mode, key))
+            if changed.rowcount != 1:
+                raise KeyError(key)
+
+    def reset_workspace_grants(self, default_mode):
+        with self.connect() as db:
+            db.execute("""UPDATE sessions SET allow_all_execution=0,
+                approval_mode=CASE WHEN COALESCE(approval_mode, ?)='trusted' THEN 'execution' ELSE approval_mode END""",
+                       (default_mode,))
 
     def execution_allowed(self, key):
         with self.connect() as db:
