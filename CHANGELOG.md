@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.7 — portable Skill import
+
+- Import complete Skill folders from a configured Git repository, a ZIP or an extracted directory in the Skills panel or through chat.
+- Select individual Skills or install a batch. Existing folders with different contents are reported as conflicts and preserved. New folders become available immediately.
+- The [incremental update guide](docs/updates/v0.7.7.md) includes the changed files and Copilot prompt.
+
 ## 0.7.6 — JupyterHub execution
 
 - Select a personal JupyterHub Python kernel and working directory per conversation. Run cells, local script source or individual local notebook cells on that kernel.

@@ -140,6 +140,25 @@
 #hubMessage { margin-bottom: 0; color: #c6bdde; }
 #hubMessage:empty { display: none; }
 #hubMessage[role="alert"] { color: #ffb4b8; }
+#skillImportDialog { max-height: 90dvh; overflow: auto; }
+#skillImportDialog .dialog-head h3 { margin: 0; }
+#skillImportDialog fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+#skillImportDialog [hidden] { display: none; }
+#skillImportDialog label { display: grid; gap: 5px; margin: 14px 0 4px; }
+#skillImportDialog select, #skillImportDialog input { min-width: 0; }
+#skillImportDialog small { display: block; overflow-wrap: anywhere; }
+#skillImportControls button { margin-top: 12px; }
+#skillImportSelection { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border); }
+#skillImportSelection h4 { margin: 0 0 8px; }
+#skillImportDialog .import-check { display: flex; align-items: flex-start; gap: 9px; margin: 0; padding: 7px 2px; overflow-wrap: anywhere; }
+#skillImportDialog input[type="checkbox"] { width: auto; margin: 2px 0; accent-color: var(--accent); }
+#skillImportList { max-height: 32dvh; overflow: auto; border-block: 1px solid var(--border); }
+#skillImportMessage { margin-bottom: 0; overflow-wrap: anywhere; }
+#skillImportMessage[role="alert"], #skillImportResults [data-status="conflict"] span { color: #ffb4b8; }
+#skillImportResults { list-style: none; margin: 10px 0 0; padding: 0; }
+#skillImportResults li { padding: 7px 0; border-top: 1px solid var(--border); overflow-wrap: anywhere; }
+#skillImportResults li span { margin-left: 8px; }
+#skillImportMessage:empty, #skillImportResults:empty { display: none; }
 @media(max-width: 760px) {
  .context-basis:not(.hidden) { margin-right: -3px; }
  .conversation-heading:has(.hub-heading-actions) { gap: 8px; }

@@ -1,6 +1,6 @@
 # BAT Agent
 
-v0.7.6
+v0.7.7
 
 BAT Agent is a local coding workbench. Chat with a model about the files in your workspace, ask it to make an edit, or run a Python script and inspect the result. Conversation history is on the left. Files open in a right-hand editor that you can expand or close.
 
@@ -33,10 +33,10 @@ Choose **Open workspace without a model** to browse files, edit code and inspect
 
 - [Using chat, files and approvals](docs/user-guide.md)
 - [Enable web search and get source links in chat](docs/web-search.md)
-- [Writing and running Skills](docs/skills.md)
+- [Import Skills from a Git repository, ZIP or folder](docs/skills.md#import-skill-folders)
 - [Diagnosing a connection](docs/connections.md)
 - [Run local project code on JupyterHub](docs/jupyterhub.md)
-- [Apply the v0.7.6 feature patch to a customized installation](docs/updates/v0.7.6.md)
+- [Update a customized installation with the v0.7.7 feature patch](docs/updates/v0.7.7.md)
 - [Security](SECURITY.md) and [changelog](CHANGELOG.md)
 
 BAT Agent is a single-user application. Scripts you approve run with your account's permissions.

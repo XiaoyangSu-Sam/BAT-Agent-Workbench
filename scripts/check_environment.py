@@ -27,7 +27,7 @@ def check():
         except (importlib.metadata.PackageNotFoundError, ValueError):
             packages[name] = "missing or unrecognized"
             issues.append(name + " must be installed in this interpreter.")
-    for name in ("index.html", "app.js", "hub.js", "editor.bundle.js", "markdown.bundle.js"):
+    for name in ("index.html", "app.js", "hub.js", "skill-import.js", "editor.bundle.js", "markdown.bundle.js"):
         if not (ROOT / "agent_harness/static" / name).is_file():
             issues.append("Missing bundled UI asset: " + name)
     config_status = "not checked"

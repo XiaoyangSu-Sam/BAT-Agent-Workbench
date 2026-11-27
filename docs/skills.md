@@ -64,6 +64,28 @@ Notebook output is saved separately under workspace/notebook-results/. Source no
 
 Skill ids created by the write tool use 1–80 letters/numbers/hyphens/underscores and start with a letter or number. Writes cannot escape the Skill directory or target protected files. Paths are guarded; subprocess execution still has the current user’s operating-system privileges.
 
+## Import Skill folders
+
+Open **Skills → Import Skills**. This also works in the workbench without a model. Select a source, preview the available Skills, select one or more rows (or all of them) and install. The folder containing each `SKILL.md` becomes `skills/<folder-name>/`. A repository ZIP can have a wrapper directory. A ZIP with `SKILL.md` at its root uses the ZIP filename without its extension as the Skill id.
+
+| Source | How to use it |
+| --- | --- |
+| Configured repository | Save the HTTPS or SSH Git clone URL and an optional subfolder such as `skills`. BAT reads the default branch using the credentials already available to Git on this machine. First verify that Git can access the repository under the account that runs BAT. |
+| ZIP file | Select the downloaded ZIP from your computer. It can contain several independent Skill directories. The upload limit is 64 MiB. |
+| Extracted folder | Enter the directory on the BAT machine. It can be one Skill or a parent directory containing several. |
+
+Chat can also preview and install by name. Try “List the Skills in the configured repository, then install the one called chart” or “Install all Skills from the workspace file `sample.zip`.” Chat installation follows the conversation's execution approval setting. Use the panel for a ZIP outside the workspace.
+
+For a large repository, set the Skills subfolder to narrow the exported contents. A source is limited to 10,000 entries and 64 MiB of expanded files. The installed registry supports 200 Skills. Chat can search a large installed catalog by id, name or description. If a Skill includes Git LFS assets, download the actual files with your normal Git client and import the hydrated folder or a ZIP made from it.
+
+Repository previews and browser ZIP uploads use a temporary snapshot. For a folder or workspace file, BAT reads the selected paths when you install. Finish editing the source before importing it.
+
+**Installed** means BAT copied the complete folder and refreshed the registry. **Identical** means the same files are already present. **Conflict** means the destination folder has different contents, including extra local files. BAT keeps that folder and continues with other new Skills. When two source folders would have the same destination name, select only the one you intend to install.
+
+The importer copies nested resources and binary assets as files. It uses Python and the existing Git executable for repository access. Importing does not execute Skill scripts or install runtime dependencies. A particular Skill may still require packages when you choose to run it.
+
+Store a real repository URL in the local workbench settings. Use Git's configured credential helper or SSH agent for authentication. The public source update contains the importer, and the configured repository and imported Skills stay on the destination installation.
+
 ## Copy an existing Skill
 
 Place the complete folder directly under skills/, so its path is skills/<id>/SKILL.md. A ZIP wrapper such as skills/archive-name/<id>/SKILL.md will not register. Keep scripts/, references/ and notebooks/ alongside SKILL.md. Click Refresh Skills after copying. This registry is separate from VS Code/Copilot .github/skills/.

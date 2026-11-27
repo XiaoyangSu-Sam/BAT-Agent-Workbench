@@ -23,7 +23,12 @@ Ask the user when required information is missing. Do not invent credentials or 
 """
 
 def system_prompt(skills, mode):
-    text = BASE + "\nAvailable skills:\n" + json.dumps(skills.list_skills()["skills"], ensure_ascii=False)
+    catalog = skills.list_skills()["skills"]
+    if len(json.dumps(catalog)) <= 12000:
+        available = json.dumps(catalog, ensure_ascii=False)
+    else:
+        available = f"{len(catalog)} Skills installed. Use list_skills with a search term to find a matching Skill."
+    text = BASE + "\nAvailable skills:\n" + available
     if mode == "json":
         text += """
 Tool protocol: respond with ONE JSON object, no markdown or commentary.

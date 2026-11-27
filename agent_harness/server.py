@@ -15,6 +15,7 @@ from .store import Store
 from .runtime.skills import SkillRegistry
 from .runtime.manager import RunManager
 from .hub_routes import register_hub_routes
+from .skill_import_routes import register_skill_import_routes
 from .model_settings import ModelInput, save_model, connection_config
 from .diagnostics import diagnose, diagnose_vision
 from .model_discovery import discover_models
@@ -67,6 +68,7 @@ def create_app(root=None, model_factory=None):
     app.state.manager, app.state.store, app.state.settings = manager, store, settings
     app.state.token = token
     register_hub_routes(app, manager)
+    register_skill_import_routes(app, manager)
 
     def require_idle():
         if manager.busy():
@@ -97,8 +99,12 @@ def create_app(root=None, model_factory=None):
 
     @app.exception_handler(HarnessError)
     async def error_handler(request, error):
-        return JSONResponse({"error":error.as_dict()}, status_code=409 if error.code in (
-            "workspace_busy","approval_expired","file_conflict") else 400)
+        status = 400
+        if error.code in ("workspace_busy", "approval_expired", "file_conflict"):
+            status = 409
+        elif error.code == "skill_preview_expired":
+            status = 410
+        return JSONResponse({"error":error.as_dict()}, status_code=status)
 
     @app.exception_handler(KeyError)
     async def not_found(request, error):
@@ -110,7 +116,7 @@ def create_app(root=None, model_factory=None):
 
     @app.get("/static/{name}")
     async def asset(name: str):
-        if name not in ("app.js","ui.js","style.css","chat-layout.css","layout.js","editor.bundle.js","connection.js","workspace.js","hub.js","markdown.bundle.js"):
+        if name not in ("app.js","ui.js","style.css","chat-layout.css","layout.js","editor.bundle.js","connection.js","workspace.js","hub.js","skill-import.js","markdown.bundle.js"):
             return JSONResponse({}, status_code=404)
         return FileResponse(static / name)
 
@@ -186,6 +192,7 @@ def create_app(root=None, model_factory=None):
             previous = settings.workspace
             result = open_workspace(settings, value.path)
             if settings.workspace != previous:
+                manager.imports.close()
                 store.reset_workspace_grants(settings.execution.approval_mode)
                 try:
                     await manager.hubs.close_all()

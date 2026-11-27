@@ -4,14 +4,17 @@ from .paths import inside, text_file, walk
 from ..errors import HarnessError
 
 class SkillRegistry:
+    max_skills = 200
+
     def __init__(self, root):
         self.root = Path(root).resolve()
         self.skills, self.warnings = {}, []
         self.refresh()
 
     def refresh(self):
-        self.skills, self.warnings = {}, []
+        skills, warnings = {}, []
         if not self.root.exists():
+            self.skills, self.warnings = skills, warnings
             return
         for folder in sorted(self.root.iterdir()):
             if not folder.is_dir() or folder.is_symlink():
@@ -30,17 +33,28 @@ class SkillRegistry:
                 lines = content.splitlines()
                 name = meta.get("name") or next((s.lstrip("# ").strip() for s in lines if s.startswith("#")), folder.name)
                 description = meta.get("description") or next((s for s in lines if s.strip() and not s.startswith("#")), "")
-                self.skills[folder.name] = {"id": folder.name, "name": str(name),
+                skills[folder.name] = {"id": folder.name, "name": str(name),
                                            "description": str(description)[:1000], "root": folder}
             except Exception:
-                self.warnings.append({"id": folder.name, "error": "Missing or invalid SKILL.md"})
-            if len(self.skills) >= 200:
-                self.warnings.append({"error": "Skill catalog capped at 200 entries"})
+                warnings.append({"id": folder.name, "error": "Missing or invalid SKILL.md"})
+            if len(skills) >= self.max_skills:
+                warnings.append({"error": "Skill catalog capped at 200 entries"})
                 break
+        self.skills, self.warnings = skills, warnings
 
     def list_skills(self):
         return {"skills": [{k: v for k,v in s.items() if k != "root"} for s in self.skills.values()],
                 "warnings": self.warnings}
+
+    def find_skills(self, query="", offset=0):
+        term = query.casefold()
+        matches = [s for s in self.skills.values()
+                   if any(term in s[key].casefold() for key in ("id", "name", "description"))]
+        page = [{"id": s["id"], "name": s["name"][:160], "description": s["description"][:240]}
+                for s in matches[offset:offset + 10]]
+        end = offset + len(page)
+        return {"skills": page, "next_offset": end if end < len(matches) else None,
+                "warnings": self.warnings[:10]}
 
     def get(self, skill_id):
         if skill_id not in self.skills:

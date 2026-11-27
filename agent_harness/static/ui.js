@@ -11,9 +11,10 @@ const approvalDescriptions = {
 };
 const toolCards=new Map(),requestedTools=new Map(),changedPaths=new Set();
 const statuses={running:"Running",awaiting_approval:"Awaiting approval",completed:"Completed",failed:"Failed",cancelled:"Stopped",interrupted:"Previous task interrupted",cancelling:"Stopping"};
-const toolLabels={write_skill_file:"Write Skill file",list_files:"Explore files",read_file:"Read file",search_files:"Search code",web_search:"Search the web",write_file:"Write file",edit_file:"Edit code",run_command:"Run command",run_python_script:"Run Python",run_notebook:"Run notebook",list_skills:"List Skills",read_skill:"Read Skill",read_skill_resource:"Read Skill resource"};
-async function api(path,body){
- const r=await fetch("/api"+path,{method:body===undefined?"GET":"POST",headers:{"Content-Type":"application/json","X-Harness-Token":token},body:body===undefined?undefined:JSON.stringify(body)});
+const toolLabels={list_available_skills:"List importable Skills",install_skills:"Install Skills",write_skill_file:"Write Skill file",list_files:"Explore files",read_file:"Read file",search_files:"Search code",web_search:"Search the web",write_file:"Write file",edit_file:"Edit code",run_command:"Run command",run_python_script:"Run Python",run_notebook:"Run notebook",list_skills:"List Skills",read_skill:"Read Skill",read_skill_resource:"Read Skill resource"};
+async function api(path,body,method=body===undefined?"GET":"POST"){
+ const upload=body instanceof File;
+ const r=await fetch("/api"+path,{method,headers:{"Content-Type":upload?"application/zip":"application/json","X-Harness-Token":token},body:upload?body:JSON.stringify(body)});
  const data=await r.json();if(!r.ok){const e=new Error(data.error?.message||JSON.stringify(data.detail||data));e.details=data.error;e.code=data.error?.code;e.status=r.status;throw e;}return data;
 }
 function el(tag,text,cls){const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;}
@@ -58,7 +59,7 @@ async function loadSkills(){
  for(const s of data.skills){const card=el("article",undefined,"skill-card");card.append(el("h4",s.name),el("div","● Registered · "+s.id,"registered"),el("p",s.description));
  const actions=el("div");const view=el("button","View instructions","secondary");view.onclick=()=>showSkill(s.id);const use=el("button",selectedSkills.has(s.id)?"Added to chat":"Add to chat","secondary"+(selectedSkills.has(s.id)?" selected":""));
  use.onclick=()=>{selectedSkills.has(s.id)?selectedSkills.delete(s.id):selectedSkills.add(s.id);loadSkills().catch(e=>error(e.message));$("prompt").focus();};actions.append(view,use);card.append(actions);$("skills").append(card);}
- if(!data.skills.length)$("skills").append(el("p","No registered Skills yet. Add skills/<id>/SKILL.md and refresh, or ask the agent to create a Skill.","skills-intro"));
+ if(!data.skills.length)$("skills").append(el("p","No registered Skills yet. Choose Import Skills to add one.","skills-intro"));
  for(const w of data.warnings)$("skills").append(el("p",(w.id||"")+": "+w.error,"inline-error"));
 }
 async function showSkill(id){try{const data=await api("/skills/"+encodeURIComponent(id));$("skillTitle").textContent=id;$("skillInstructions").textContent=data.instructions;$("skillDialog").showModal();}catch(e){error(e.message);}}
@@ -172,7 +173,7 @@ function renderEvent(event,initial,modelId){
  : (result.stdout||"")+(result.stderr?"\n[stderr]\n"+result.stderr:"")+"\nExit code: "+result.exit_code+(result.timed_out?" · Timed out":"");
  if($("output").textContent==="Process output will appear here.")$("output").textContent="";
  $("output").textContent+="> "+d.name+"\n"+report+"\n\n";$("output").scrollTop=$("output").scrollHeight;}
- if(result.scope==="skill"){loadSkills().catch(e=>error(e.message));}
+ if(result.scope==="skill"||(d.ok&&d.name==="install_skills")){loadSkills().catch(e=>error(e.message));}
  if(result.diff!==undefined){const displayPath=result.scope==="skill"?"skills/"+result.skill_id+"/"+result.path:result.path;changedPaths.add(displayPath);$("changeCount").textContent=changedPaths.size;const change=el("details",undefined,"change");change.open=true;const summary=el("summary",displayPath);summary.onclick=()=>{if(result.scope==="skill")showSkill(result.skill_id);else openFile(result.path).catch(e=>error(e.message));};change.append(summary,el("pre",result.diff||"No text changes"));$("changes").append(change);if(result.scope!=="skill")syncChangedFile(result.path).catch(e=>error(e.message));}
  }
  if(event.type==="approval_required"){$("allowAll").classList.toggle("hidden",!(d.can_allow_all ?? (d.kind==="execute")));communication("approval","Waiting for your approval");approvalId=d.approval_id;$("approvalText").textContent=hub.approvalTarget(d)+d.name+"\n"+JSON.stringify(d.arguments,null,2);$("approval").classList.remove("hidden");}

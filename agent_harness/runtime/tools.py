@@ -5,13 +5,14 @@ from .processes import ProcessTools
 from .web_search import MAX_QUERY_CHARS, configured_search_provider, web_search
 from ..errors import HarnessError
 from ..hub_tools import HubTools
+from ..skill_import_routes import run_worker
 
 S = {"type": "string"}
 def string(maximum=10000, minimum=0):
     return dict(type="string", minLength=minimum, maxLength=maximum)
 
 class ToolRegistry:
-    def __init__(self, settings, skills, *, hubs=None, session_id=None):
+    def __init__(self, settings, skills, *, hubs=None, session_id=None, imports=None):
         self.entries = {}
         self.files = FileTools(settings.workspace, settings.state_dir)
         self.hub_status = hubs.status(session_id) if hubs is not None else {"target": "local"}
@@ -35,7 +36,19 @@ class ToolRegistry:
         add("edit_file", "Replace exactly one occurrence of old_text. Requires current SHA256.",
             {"path":path,"old_text":string(100000,1),"new_text":string(100000),"expected_sha256":sha},
             ["path","old_text","new_text","expected_sha256"], self.files.edit_file, "write")
-        add("list_skills", "List installed skill ids and descriptions.", {}, [], skills.list_skills)
+        add("list_skills", "Find installed Skills by id, name or description. Use next_offset for more results.",
+            {"query": string(500), "offset": {"type": "integer", "minimum": 0}}, [], skills.find_skills)
+        if imports is not None:
+            async def available(**args):
+                return await run_worker(lambda: imports.chat_preview(session_id, **args))
+            async def install(ticket, selected):
+                return await run_worker(imports.chat_apply, session_id, ticket, selected)
+            add("list_available_skills", "Preview Skills from the configured repository or a workspace-relative folder or ZIP. Search by query. Reuse ticket and next_offset for further pages.",
+                {"source": {"type": "string", "enum": ["repository", "workspace"]}, "path": path, "ticket": string(128, 1),
+                 "query": string(500), "offset": {"type": "integer", "minimum": 0}}, [], available)
+            add("install_skills", "Install complete folders by exact preview path. ['*'] installs the entire source, including unlisted pages: use only when explicitly requested. Differing local folders are preserved.",
+                {"ticket": string(128, 1), "selected": {"type": "array", "items": string(4096, 1), "minItems": 1, "maxItems": 10000}},
+                ["ticket", "selected"], install, "execute")
         add("read_skill", "Load instructions and resource names for an installed skill.",
             {"skill_id":path}, ["skill_id"], skills.read_skill)
         add("read_skill_resource", "Read a skill resource relative to its own directory.",

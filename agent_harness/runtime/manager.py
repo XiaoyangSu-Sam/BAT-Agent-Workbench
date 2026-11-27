@@ -6,16 +6,18 @@ from .turn import run_turn
 from .tools import ToolRegistry
 from ..errors import HarnessError, clean
 from ..hub_routes import HubSessions
+from ..skill_import_routes import SkillImports
 
 class RunManager:
     def __init__(self, settings, store, skills, model_factory=ModelClient):
         self.settings, self.store, self.skills = settings, store, skills
         self.model_factory = model_factory
         self.hubs = HubSessions(settings, store)
+        self.imports = SkillImports(settings, skills)
         self.tasks, self.approvals = {}, {}
 
     def busy(self):
-        return self.hubs.changing or any(not t.done() for t in self.tasks.values())
+        return self.hubs.changing or self.imports.ui_busy or any(not t.done() for t in self.tasks.values())
 
     def start(self, session_id, prompt, model_id=None):
         if self.busy():
@@ -70,7 +72,7 @@ class RunManager:
             self.settings.workspace.mkdir(parents=True, exist_ok=True)
             await emit("run_started", {"provider":config.provider,"model":config.model,
                        "tool_mode":config.tool_mode,"workspace":str(self.settings.workspace)})
-            tools = ToolRegistry(self.settings, self.skills, hubs=self.hubs, session_id=session_id)
+            tools = ToolRegistry(self.settings, self.skills, hubs=self.hubs, session_id=session_id, imports=self.imports)
             await run_turn(key, session_id, messages, config, tools, self.skills,
                            execution, self.store, emit, approve, self.model_factory,
                            execution_allowed=lambda: not always_ask and self.store.execution_allowed(session_id))
@@ -115,4 +117,7 @@ class RunManager:
     async def close(self):
         for key in list(self.tasks):
             await self.cancel(key)
-        await self.hubs.close_all()
+        try:
+            await self.hubs.close_all()
+        finally:
+            self.imports.close()

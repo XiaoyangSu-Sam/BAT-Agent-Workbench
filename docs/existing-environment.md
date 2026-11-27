@@ -1,6 +1,6 @@
 # Update an existing BAT Agent installation
 
-For a customized installation, use the [v0.7.6 feature patch and merge instructions](updates/v0.7.6.md). The source and the Python environment can be updated separately. The procedure below covers full source updates.
+For a customized installation on v0.7.6, use the [v0.7.7 feature patch and merge instructions](updates/v0.7.7.md). The earlier [JupyterHub update](updates/v0.7.6.md) applies to v0.7.5. The procedure below covers full source updates.
 
 ## Before the update
 
